@@ -15,6 +15,7 @@ namespace NatsWebSocket.JetStream
         private readonly INatsConnection _connection;
         private readonly string _prefix;
         private readonly TimeSpan _timeout;
+        private readonly NatsHeaders _headers;
 
         /// <summary>
         /// Default API prefix for JetStream.
@@ -27,11 +28,13 @@ namespace NatsWebSocket.JetStream
         /// <param name="connection">NATS connection</param>
         /// <param name="domain">Optional JetStream domain</param>
         /// <param name="timeout">API request timeout</param>
-        public NatsJSContext(INatsConnection connection, string domain = null, TimeSpan? timeout = null)
+        /// <param name="headers">Optional headers to include with all JetStream API requests (e.g., JWT token)</param>
+        public NatsJSContext(INatsConnection connection, string domain = null, TimeSpan? timeout = null, NatsHeaders headers = null)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _prefix = string.IsNullOrEmpty(domain) ? DefaultApiPrefix : $"$JS.{domain}.API";
             _timeout = timeout ?? TimeSpan.FromSeconds(30);
+            _headers = headers;
         }
 
         /// <summary>
@@ -224,7 +227,7 @@ namespace NatsWebSocket.JetStream
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
 
-            var reply = await _connection.RequestAsync(apiSubject, data, null, _timeout, ct).ConfigureAwait(false);
+            var reply = await _connection.RequestAsync(apiSubject, data, _headers, _timeout, ct).ConfigureAwait(false);
 
             // Check for 404 in headers
             var statusHeader = reply.Headers?.GetFirst("Status");
@@ -246,7 +249,7 @@ namespace NatsWebSocket.JetStream
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
 
-            var reply = await _connection.RequestAsync(apiSubject, data, null, _timeout, ct).ConfigureAwait(false);
+            var reply = await _connection.RequestAsync(apiSubject, data, _headers, _timeout, ct).ConfigureAwait(false);
 
             var statusHeader = reply.Headers?.GetFirst("Status");
             if (statusHeader == "404")
@@ -267,7 +270,7 @@ namespace NatsWebSocket.JetStream
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
 
-            var reply = await _connection.RequestAsync(apiSubject, data, null, _timeout, ct).ConfigureAwait(false);
+            var reply = await _connection.RequestAsync(apiSubject, data, _headers, _timeout, ct).ConfigureAwait(false);
 
             var statusHeader = reply.Headers?.GetFirst("Status");
             if (statusHeader == "404")
@@ -287,7 +290,7 @@ namespace NatsWebSocket.JetStream
             var json = payload != null ? JsonSerializer.Serialize(payload) : "{}";
             var data = Encoding.UTF8.GetBytes(json);
 
-            var reply = await _connection.RequestAsync(subject, data, null, _timeout, ct).ConfigureAwait(false);
+            var reply = await _connection.RequestAsync(subject, data, _headers, _timeout, ct).ConfigureAwait(false);
 
             if (reply.Data == null || reply.Data.Length == 0)
             {

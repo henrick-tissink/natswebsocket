@@ -90,19 +90,10 @@ namespace NatsWebSocket.ObjectStore
             var nuid = Nuid.Next();
             var chunkSubject = GetChunkSubject(nuid);
 
-            // First, purge any existing object with this name
-            try
-            {
-                var existing = await GetInfoAsync(meta.Name, ct).ConfigureAwait(false);
-                if (existing != null && !string.IsNullOrEmpty(existing.Nuid))
-                {
-                    await DeleteChunksAsync(existing.Nuid, ct).ConfigureAwait(false);
-                }
-            }
-            catch (NatsObjNotFoundException)
-            {
-                // No existing object, nothing to purge
-            }
+            // Note: We don't check for existing objects before uploading because:
+            // 1. It requires DIRECT.GET permissions which may not be available
+            // 2. The metadata rollup header will replace old metadata automatically
+            // 3. Old chunks may become orphaned but will be cleaned up by stream limits
 
             // Read and publish chunks, computing digest
             long totalSize = 0;
